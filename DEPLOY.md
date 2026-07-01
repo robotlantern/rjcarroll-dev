@@ -1,57 +1,43 @@
-# Deploy / DNS cutover for rjcarroll.dev
+# Deploy / DNS for rjcarroll.dev
 
-The site is live on GitHub Pages at the project URL as soon as Pages is enabled:
-**https://robotlantern.github.io/rjcarroll-dev/**
+**Live:** https://rjcarroll.dev — served from the `main` branch root via GitHub Pages.
+`www.rjcarroll.dev` 301-redirects to the bare apex. Push to `main` to publish.
 
-To serve it at **https://rjcarroll.dev**, two things are needed: (1) DNS records at Porkbun,
-and (2) the custom domain set on the Pages site. DNS is a live-domain change, so it is left
-here as a ready-to-apply step rather than done unattended.
+## DNS (Porkbun) — current, applied
+| Type | Host | Value |
+|------|------|-------|
+| A | `@` (apex) | `185.199.108.153` |
+| A | `@` (apex) | `185.199.109.153` |
+| A | `@` (apex) | `185.199.110.153` |
+| A | `@` (apex) | `185.199.111.153` |
+| CNAME | `www` | `robotlantern.github.io` |
 
-## Current DNS (as of cutover prep — parked, safe to replace)
-- `rjcarroll.dev` A → `44.227.76.166`, `44.227.65.245`  (Porkbun parking)
-- `www.rjcarroll.dev` CNAME → `pixie.porkbun.com`  (Porkbun parking)
-- No MX / email records — nothing to preserve.
+The GitHub Pages custom domain is `rjcarroll.dev` (see the `CNAME` file). GitHub issues a
+single Let's Encrypt certificate covering both `rjcarroll.dev` and `www.rjcarroll.dev`.
 
-## Step 1 — Porkbun DNS records to set
-Replace the parking records with GitHub Pages records:
+## Managing Porkbun DNS (use the API, not the browser)
+Porkbun's account setting **"Opt In All Domains"** (porkbun.com → Account → API Access) is **ON**,
+so DNS is managed via the API (or Codex's Porkbun MCP). Credentials: `~/.codex/secrets/porkbun.env`
+(`PORKBUN_API_KEY` / `PORKBUN_SECRET_API_KEY`).
 
-**Apex `rjcarroll.dev` — four A records (delete the two parking A records first):**
-```
-185.199.108.153
-185.199.109.153
-185.199.110.153
-185.199.111.153
-```
-Optional IPv6 (AAAA):
-```
-2606:50c0:8000::153
-2606:50c0:8001::153
-2606:50c0:8002::153
-2606:50c0:8003::153
-```
+> **Lesson learned:** the Porkbun *browser* DNS editor hides existing records and silently drops
+> a new record that conflicts with one it doesn't show. This domain shipped with a parking
+> `ALIAS @ → pixie.porkbun.com` and a wildcard `CNAME *.rjcarroll.dev → pixie.porkbun.com`; an
+> `A` record can't coexist with an `ALIAS` at the same name, so apex A-records added in the browser
+> never saved. The API (`dns/retrieve`) showed the true zone; deleting the ALIAS + wildcard and
+> creating the A-records via `dns/create` fixed it.
 
-**`www` subdomain — CNAME (replace the parking CNAME):**
-```
-www.rjcarroll.dev  CNAME  robotlantern.github.io.
-```
-
-Porkbun writes go through the guarded MCP wrapper (see
-`~/work/admin/domains/agent-domain-dns-runbook.md`): snapshot first, switch to the
-write ("muddy") wrapper for the change window, apply minimal records, then revert to read-only.
-
-## Step 2 — set the Pages custom domain
-After DNS is in place:
 ```bash
-gh api -X PUT repos/robotlantern/rjcarroll-dev/pages -f cname=rjcarroll.dev
-```
-This also writes a `CNAME` file to the repo. Once the certificate provisions (can take a few
-minutes to an hour), enable HTTPS enforcement:
-```bash
-gh api -X PUT repos/robotlantern/rjcarroll-dev/pages -F https_enforced=true
+# read the true zone
+source ~/.codex/secrets/porkbun.env
+curl -s -X POST https://api.porkbun.com/api/json/v3/dns/retrieve/rjcarroll.dev \
+  -H 'Content-Type: application/json' \
+  -d "{\"apikey\":\"$PORKBUN_API_KEY\",\"secretapikey\":\"$PORKBUN_SECRET_API_KEY\"}"
 ```
 
 ## Verify
 ```bash
-dig +short rjcarroll.dev A          # expect the four 185.199.10x.153 addresses
+dig +short rjcarroll.dev A            # → the four 185.199.10x.153 addresses
 curl -sI https://rjcarroll.dev | head -n1
+curl -sI https://www.rjcarroll.dev | head -n1   # → 301 to https://rjcarroll.dev/
 ```
