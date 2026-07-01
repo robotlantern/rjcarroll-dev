@@ -109,9 +109,17 @@ code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:0.9em;bac
 .inline-link:hover{text-decoration:underline}
 
 /* About */
-.about{max-width:780px}
-.about p{color:var(--slate);margin-bottom:16px}
-.about p:first-of-type{font-size:1.06rem;color:var(--ink-soft)}
+.about{max-width:880px}
+.about-grid{display:grid;grid-template-columns:210px 1fr;gap:38px;align-items:start}
+.about-photo{margin:0}
+.about-photo img{width:100%;height:auto;display:block;border-radius:18px;border:3px solid #fff;box-shadow:0 16px 38px -18px rgba(15,23,32,.45);outline:1px solid var(--line)}
+.about-photo figcaption{margin-top:12px;text-align:center;font-size:0.82rem;font-weight:600;color:var(--slate);letter-spacing:0.02em}
+.about-body p{color:var(--slate);margin-bottom:16px}
+.about-body p:first-of-type{font-size:1.06rem;color:var(--ink-soft)}
+@media (max-width:640px){
+  .about-grid{grid-template-columns:1fr;gap:22px;justify-items:center;text-align:left}
+  .about-photo{max-width:190px}
+}
 
 /* Contact */
 .section-contact{background:var(--ink);color:#fff;text-align:center}
